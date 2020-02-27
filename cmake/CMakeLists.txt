@@ -1,6 +1,6 @@
 include(ExternalProject)
 
-set(SWSDK_VERSION "1.44")
+set(SWSDK_VERSION "1.45")
 set(SWSDK_RELEASE "x86")
 if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
     set(SWSDK_RELEASE "x64")
