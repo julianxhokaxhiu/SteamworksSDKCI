@@ -4,6 +4,7 @@ if (NOT STEAMWORKSSDK_FOUND)
 	find_library(
 		STEAMWORKSSDK_LIBRARY
 		steam_api
+		steam_api64
 		PATH_SUFFIXES
 		lib/steam
 	)

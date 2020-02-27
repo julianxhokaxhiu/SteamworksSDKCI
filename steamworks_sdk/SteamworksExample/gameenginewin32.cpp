@@ -1,15 +1,16 @@
 //========= Copyright © 1996-2008, Valve LLC, All rights reserved. ============
 //
-// Purpose: Main class for the game engine
+// Purpose: Main class for the game engine -- win32 implementation
 //
 // $NoKeywords: $
 //=============================================================================
 
 #include "stdafx.h"
-#include "GameEngine.h"
+#include "GameEngineWin32.h"
+#include <map>
 
 // Allocate static member
-std::map<HWND, CGameEngine* > CGameEngine::m_MapEngineInstances;
+std::map<HWND, CGameEngineWin32* > CGameEngineWin32::m_MapEngineInstances;
 
 //-----------------------------------------------------------------------------
 // Purpose: WndProc
@@ -18,11 +19,11 @@ LRESULT CALLBACK GameWndProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam 
 {
 	switch ( msg )
 	{    
-		case WM_CLOSE:
-		case WM_DESTROY:
-		case WM_QUIT:
+	case WM_CLOSE:
+	case WM_DESTROY:
+	case WM_QUIT:
 		{
-			CGameEngine *pGameEngine = CGameEngine::FindEngineInstanceForHWND( hWnd );
+			CGameEngineWin32 *pGameEngine = CGameEngineWin32::FindEngineInstanceForHWND( hWnd );
 			if ( pGameEngine )
 				pGameEngine->Shutdown();
 			else
@@ -31,40 +32,40 @@ LRESULT CALLBACK GameWndProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam 
 			PostQuitMessage( 0 );
 			return(0);
 		} break;
-		case WM_KEYDOWN:
-		case WM_SYSKEYDOWN:
+	case WM_KEYDOWN:
+	case WM_SYSKEYDOWN:
+		{
+			CGameEngineWin32 *pGameEngine = CGameEngineWin32::FindEngineInstanceForHWND( hWnd );
+			if ( pGameEngine )
 			{
-				CGameEngine *pGameEngine = CGameEngine::FindEngineInstanceForHWND( hWnd );
-				if ( pGameEngine )
-				{
-					pGameEngine->RecordKeyDown( (DWORD) wParam );
-					return 0;
-				}
-				else
-				{
-					OutputDebugString( "Failed to find game engine for hwnd, key down event lost\n" );
-				}
+				pGameEngine->RecordKeyDown( (DWORD) wParam );
+				return 0;
 			}
-			break;
-		case WM_KEYUP:
-		case WM_SYSKEYUP:
+			else
 			{
-				CGameEngine *pGameEngine = CGameEngine::FindEngineInstanceForHWND( hWnd );
-				if ( pGameEngine )
-				{
-					pGameEngine->RecordKeyUp( (DWORD) wParam );
-					return 0;
-				}
-				else
-				{
-					OutputDebugString( "Failed to find game engine for hwnd, key up event lost\n" );
-				}
+				OutputDebugString( "Failed to find game engine for hwnd, key down event lost\n" );
 			}
-			break;
+		}
+		break;
+	case WM_KEYUP:
+	case WM_SYSKEYUP:
+		{
+			CGameEngineWin32 *pGameEngine = CGameEngineWin32::FindEngineInstanceForHWND( hWnd );
+			if ( pGameEngine )
+			{
+				pGameEngine->RecordKeyUp( (DWORD) wParam );
+				return 0;
+			}
+			else
+			{
+				OutputDebugString( "Failed to find game engine for hwnd, key up event lost\n" );
+			}
+		}
+		break;
 
 		// Add additional handlers for things like input here...
-		default: 
-			break;
+	default: 
+		break;
 	}
 
 	return DefWindowProc(hWnd, msg, wParam, lParam);
@@ -74,7 +75,7 @@ LRESULT CALLBACK GameWndProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam 
 //-----------------------------------------------------------------------------
 // Purpose: Constructor for game engine instance
 //-----------------------------------------------------------------------------
-CGameEngine::CGameEngine( HINSTANCE hInstance, int nShowCommand, int32 nWindowWidth, int32 nWindowHeight )
+CGameEngineWin32::CGameEngineWin32( HINSTANCE hInstance, int nShowCommand, int32 nWindowWidth, int32 nWindowHeight )
 {
 	m_bEngineReadyForUse = false;
 	m_bShuttingDown = false;
@@ -106,13 +107,26 @@ CGameEngine::CGameEngine( HINSTANCE hInstance, int nShowCommand, int32 nWindowWi
 	m_ulGameTickCount = 0;
 	m_dwBackgroundColor = D3DCOLOR_ARGB(0, 255, 255, 255 );
 
+	// restrict this main game thread to the first processor, so query performance counter won't jump on crappy AMD cpus
+	DWORD dwThreadAffinityMask = 0x01;
+	::SetThreadAffinityMask( ::GetCurrentThread(), dwThreadAffinityMask );
+
+	// Setup timing data
+	
+	LARGE_INTEGER l;
+	::QueryPerformanceFrequency( &l );
+	m_ulPerfCounterToMillisecondsDivisor = l.QuadPart/1000;
+
+	::QueryPerformanceCounter( &l );
+	m_ulFirstQueryPerformanceCounterValue = l.QuadPart;
+
 	if ( !BCreateGameWindow( nShowCommand ) || !m_hWnd )
 	{
 		OutputDebugString( "Failed creating game window\n" );
 		return;
 	}
 
-	CGameEngine::AddInstanceToHWNDMap( this, m_hWnd );
+	CGameEngineWin32::AddInstanceToHWNDMap( this, m_hWnd );
 
 	if ( !BInitializeD3D9() )
 	{
@@ -133,7 +147,7 @@ CGameEngine::CGameEngine( HINSTANCE hInstance, int nShowCommand, int32 nWindowWi
 //-----------------------------------------------------------------------------
 // Purpose: Shutdown the game engine
 //-----------------------------------------------------------------------------
-void CGameEngine::Shutdown()
+void CGameEngineWin32::Shutdown()
 {
 	// Flag that we are shutting down so the frame loop will stop running
 	m_bShuttingDown = true;
@@ -212,7 +226,7 @@ void CGameEngine::Shutdown()
 			}
 		}
 
-		CGameEngine::RemoveInstanceFromHWNDMap( m_hWnd );
+		CGameEngineWin32::RemoveInstanceFromHWNDMap( m_hWnd );
 		m_hWnd = NULL;
 	}
 
@@ -231,7 +245,7 @@ void CGameEngine::Shutdown()
 //-----------------------------------------------------------------------------
 // Purpose: Handle losing the d3d device (ie, release resources)
 //-----------------------------------------------------------------------------
-bool CGameEngine::BHandleLostDevice()
+bool CGameEngineWin32::BHandleLostDevice()
 {
 	bool bFullySuccessful = true;
 
@@ -302,7 +316,7 @@ bool CGameEngine::BHandleLostDevice()
 //-----------------------------------------------------------------------------
 // Purpose: Handle device reset after losing it
 //-----------------------------------------------------------------------------
-bool CGameEngine::BHandleResetDevice()
+bool CGameEngineWin32::BHandleResetDevice()
 {
 	bool bFullySuccessful = true;
 
@@ -329,9 +343,60 @@ bool CGameEngine::BHandleResetDevice()
 
 
 //-----------------------------------------------------------------------------
+// Purpose: Updates current tick count for the game engine
+//-----------------------------------------------------------------------------
+void CGameEngineWin32::UpdateGameTickCount()
+{
+	LARGE_INTEGER l;
+	::QueryPerformanceCounter( &l );
+
+	m_ulPreviousGameTickCount = m_ulGameTickCount;
+	m_ulGameTickCount = (l.QuadPart - m_ulFirstQueryPerformanceCounterValue) / m_ulPerfCounterToMillisecondsDivisor;
+}
+
+
+//-----------------------------------------------------------------------------
+// Purpose: Tell the game engine to sleep for a bit if needed to limit frame rate.  You must keep
+// calling this repeatedly until it returns false.  If it returns true it's slept a little, but more
+// time may be needed.
+//-----------------------------------------------------------------------------
+bool CGameEngineWin32::BSleepForFrameRateLimit( uint32 ulMaxFrameRate )
+{
+	// Frame rate limiting
+	float flDesiredFrameMilliseconds = 1000.0f/ulMaxFrameRate;
+
+	LARGE_INTEGER l;
+	::QueryPerformanceCounter( &l );
+
+	uint64 ulGameTickCount = (l.QuadPart - m_ulFirstQueryPerformanceCounterValue) / m_ulPerfCounterToMillisecondsDivisor;
+
+	float flMillisecondsElapsed = (float)(ulGameTickCount - m_ulGameTickCount);
+	if ( flMillisecondsElapsed < flDesiredFrameMilliseconds )
+	{
+		// If enough time is left sleep, otherwise just keep spinning so we don't go over the limit...
+		if ( flDesiredFrameMilliseconds - flMillisecondsElapsed > 3.0f )
+		{
+			Sleep( 2 );
+		}
+		else
+		{
+			// Just return right away so we busy loop, don't want to sleep too long and go over
+		}
+		
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+
+
+//-----------------------------------------------------------------------------
 // Purpose: Resets all the render, texture, and sampler states to our defaults
 //-----------------------------------------------------------------------------
-void CGameEngine::ResetRenderStates()
+void CGameEngineWin32::ResetRenderStates()
 {
 	// Since we are just a really basic rendering engine we'll setup our initial 
 	// render states here and we can just assume that they don't change later
@@ -358,7 +423,7 @@ void CGameEngine::ResetRenderStates()
 //-----------------------------------------------------------------------------
 // Purpose: Creates the window for the game to use
 //-----------------------------------------------------------------------------
-bool CGameEngine::BCreateGameWindow( int nShowCommand )
+bool CGameEngineWin32::BCreateGameWindow( int nShowCommand )
 {
 	WNDCLASS wc;
 	DWORD	 style;
@@ -411,7 +476,7 @@ bool CGameEngine::BCreateGameWindow( int nShowCommand )
 	return true;
 }
 
-bool CGameEngine::BInitializeD3D9()
+bool CGameEngineWin32::BInitializeD3D9()
 {
 	if ( !m_pD3D9Interface )
 	{
@@ -491,7 +556,7 @@ bool CGameEngine::BInitializeD3D9()
 //-----------------------------------------------------------------------------
 // Purpose: Set the background color to clear to
 //-----------------------------------------------------------------------------
-void CGameEngine::SetBackgroundColor( short a, short r, short g, short b )
+void CGameEngineWin32::SetBackgroundColor( short a, short r, short g, short b )
 {
 	m_dwBackgroundColor = D3DCOLOR_ARGB( a, r, g, b );
 }
@@ -499,7 +564,7 @@ void CGameEngine::SetBackgroundColor( short a, short r, short g, short b )
 //-----------------------------------------------------------------------------
 // Purpose: Start a new frame
 //-----------------------------------------------------------------------------
-bool CGameEngine::StartFrame()
+bool CGameEngineWin32::StartFrame()
 {
 	// Before doing anything else pump messages
 	MessagePump();
@@ -539,7 +604,7 @@ bool CGameEngine::StartFrame()
 	else if ( hRes == D3DERR_DEVICENOTRESET )
 	{
 		OutputDebugString( "Getting ready to reset device\n" );
-		
+
 		// Reset the device
 		hRes = m_pD3D9Device->Reset( &m_d3dpp );
 		if ( !FAILED( hRes ) )
@@ -558,7 +623,7 @@ bool CGameEngine::StartFrame()
 			Shutdown();
 		}
 	}
-	
+
 	// Return true even though we can't render, frames can still run otherwise
 	// and the game should continue its simulation or choose to pause on its own
 	if ( m_bDeviceLost )
@@ -580,7 +645,7 @@ bool CGameEngine::StartFrame()
 //-----------------------------------------------------------------------------
 // Purpose: End the current frame
 //-----------------------------------------------------------------------------
-void CGameEngine::EndFrame()
+void CGameEngineWin32::EndFrame()
 {
 	if ( BShuttingDown() )
 		return;
@@ -626,7 +691,7 @@ void CGameEngine::EndFrame()
 //-----------------------------------------------------------------------------
 // Purpose: Creates a new vertex buffer
 //-----------------------------------------------------------------------------
-HGAMEVERTBUF CGameEngine::HCreateVertexBuffer( uint32 nSizeInBytes, DWORD dwUsage, DWORD dwFVF )
+HGAMEVERTBUF CGameEngineWin32::HCreateVertexBuffer( uint32 nSizeInBytes, DWORD dwUsage, DWORD dwFVF )
 {
 	if ( !m_pD3D9Device )
 		return false;
@@ -656,7 +721,7 @@ HGAMEVERTBUF CGameEngine::HCreateVertexBuffer( uint32 nSizeInBytes, DWORD dwUsag
 //-----------------------------------------------------------------------------
 // Purpose: Locks an entire vertex buffer with the specified flags into memory
 //-----------------------------------------------------------------------------
-bool CGameEngine::BLockEntireVertexBuffer( HGAMEVERTBUF hVertBuf, void **ppVoid, DWORD dwFlags )
+bool CGameEngineWin32::BLockEntireVertexBuffer( HGAMEVERTBUF hVertBuf, void **ppVoid, DWORD dwFlags )
 {
 	if ( !m_pD3D9Device )
 		return false;
@@ -711,7 +776,7 @@ bool CGameEngine::BLockEntireVertexBuffer( HGAMEVERTBUF hVertBuf, void **ppVoid,
 //-----------------------------------------------------------------------------
 // Purpose: Unlocks a vertex buffer
 //-----------------------------------------------------------------------------
-bool CGameEngine::BUnlockVertexBuffer( HGAMEVERTBUF hVertBuf )
+bool CGameEngineWin32::BUnlockVertexBuffer( HGAMEVERTBUF hVertBuf )
 {
 	if ( !m_pD3D9Device )
 		return false;
@@ -765,7 +830,7 @@ bool CGameEngine::BUnlockVertexBuffer( HGAMEVERTBUF hVertBuf )
 //-----------------------------------------------------------------------------
 // Purpose: Release a vertex buffer and free its resources
 //-----------------------------------------------------------------------------
-bool CGameEngine::BReleaseVertexBuffer( HGAMEVERTBUF hVertBuf )
+bool CGameEngineWin32::BReleaseVertexBuffer( HGAMEVERTBUF hVertBuf )
 {
 	if ( !m_pD3D9Device )
 		return false;
@@ -812,7 +877,7 @@ bool CGameEngine::BReleaseVertexBuffer( HGAMEVERTBUF hVertBuf )
 //-----------------------------------------------------------------------------
 // Purpose: Set the FVF
 //-----------------------------------------------------------------------------
-bool CGameEngine::BSetFVF( DWORD dwFormat )
+bool CGameEngineWin32::BSetFVF( DWORD dwFormat )
 {
 	if ( !m_pD3D9Device )
 		return false;
@@ -830,7 +895,7 @@ bool CGameEngine::BSetFVF( DWORD dwFormat )
 		OutputDebugString( "SetFVF() call failed\n" );
 		return false;
 	}
-	
+
 	m_dwCurrentFVF = dwFormat;
 
 	return true;
@@ -840,7 +905,7 @@ bool CGameEngine::BSetFVF( DWORD dwFormat )
 //-----------------------------------------------------------------------------
 // Purpose: Draw a line, the engine internally manages a vertex buffer for batching these
 //-----------------------------------------------------------------------------
-bool CGameEngine::BDrawLine( float xPos0, float yPos0, DWORD dwColor0, float xPos1, float yPos1, DWORD dwColor1 )
+bool CGameEngineWin32::BDrawLine( float xPos0, float yPos0, DWORD dwColor0, float xPos1, float yPos1, DWORD dwColor1 )
 {
 	if ( !m_pD3D9Device )
 		return false;
@@ -903,7 +968,7 @@ bool CGameEngine::BDrawLine( float xPos0, float yPos0, DWORD dwColor0, float xPo
 //-----------------------------------------------------------------------------
 // Purpose: Flush batched lines to the screen
 //-----------------------------------------------------------------------------
-bool CGameEngine::BFlushLineBuffer()
+bool CGameEngineWin32::BFlushLineBuffer()
 {
 	// If the vert buffer isn't already locked into memory, then there is nothing to flush
 	if ( m_pLineVertexes == NULL )
@@ -957,7 +1022,7 @@ bool CGameEngine::BFlushLineBuffer()
 //-----------------------------------------------------------------------------
 // Purpose: Draw a point, the engine internally manages a vertex buffer for batching these
 //-----------------------------------------------------------------------------
-bool CGameEngine::BDrawPoint( float xPos, float yPos, DWORD dwColor )
+bool CGameEngineWin32::BDrawPoint( float xPos, float yPos, DWORD dwColor )
 {
 	if ( !m_pD3D9Device )
 		return false;
@@ -1014,7 +1079,7 @@ bool CGameEngine::BDrawPoint( float xPos, float yPos, DWORD dwColor )
 //-----------------------------------------------------------------------------
 // Purpose: Flush batched points to the screen
 //-----------------------------------------------------------------------------
-bool CGameEngine::BFlushPointBuffer()
+bool CGameEngineWin32::BFlushPointBuffer()
 {
 	// If the vert buffer isn't already locked into memory, then there is nothing to flush
 	if ( m_pPointVertexes == NULL )
@@ -1068,7 +1133,7 @@ bool CGameEngine::BFlushPointBuffer()
 //-----------------------------------------------------------------------------
 // Purpose: Draw a filled quad
 //-----------------------------------------------------------------------------
-bool CGameEngine::BDrawFilledQuad( float xPos0, float yPos0, float xPos1, float yPos1, DWORD dwColor )
+bool CGameEngineWin32::BDrawFilledQuad( float xPos0, float yPos0, float xPos1, float yPos1, DWORD dwColor )
 {
 	if ( !m_hTextureWhite )
 	{
@@ -1085,7 +1150,7 @@ bool CGameEngine::BDrawFilledQuad( float xPos0, float yPos0, float xPos1, float 
 //-----------------------------------------------------------------------------
 // Purpose: Draw a textured quad
 //-----------------------------------------------------------------------------
-bool CGameEngine::BDrawTexturedQuad( float xPos0, float yPos0, float xPos1, float yPos1, float u0, float v0, float u1, float v1, DWORD dwColor, HGAMETEXTURE hTexture )
+bool CGameEngineWin32::BDrawTexturedQuad( float xPos0, float yPos0, float xPos1, float yPos1, float u0, float v0, float u1, float v1, DWORD dwColor, HGAMETEXTURE hTexture )
 {
 	if ( !m_pD3D9Device )
 		return false;
@@ -1189,7 +1254,7 @@ bool CGameEngine::BDrawTexturedQuad( float xPos0, float yPos0, float xPos1, floa
 //-----------------------------------------------------------------------------
 // Purpose: Flush buffered quads
 //-----------------------------------------------------------------------------
-bool CGameEngine::BFlushQuadBuffer()
+bool CGameEngineWin32::BFlushQuadBuffer()
 {
 	// If the vert buffer isn't already locked into memory, then there is nothing to flush
 	if ( m_pQuadVertexes == NULL )
@@ -1319,13 +1384,13 @@ bool CGameEngine::BFlushQuadBuffer()
 
 	return true;
 
-	
+
 }
 
 //-----------------------------------------------------------------------------
 // Purpose: Set the current stream source (this always set stream 0, we don't support more than 1 stream presently)
 //-----------------------------------------------------------------------------
-bool CGameEngine::BSetStreamSource( HGAMEVERTBUF hVertBuf, uint32 uOffset, uint32 uStride )
+bool CGameEngineWin32::BSetStreamSource( HGAMEVERTBUF hVertBuf, uint32 uOffset, uint32 uStride )
 {
 	if ( !m_pD3D9Device )
 		return false;
@@ -1368,7 +1433,7 @@ bool CGameEngine::BSetStreamSource( HGAMEVERTBUF hVertBuf, uint32 uOffset, uint3
 //-----------------------------------------------------------------------------
 // Purpose: Renders primitives using the current stream source 
 //-----------------------------------------------------------------------------
-bool CGameEngine::BRenderPrimitive( D3DPRIMITIVETYPE primType, uint32 uStartVertex, uint32 uCount )
+bool CGameEngineWin32::BRenderPrimitive( D3DPRIMITIVETYPE primType, uint32 uStartVertex, uint32 uCount )
 {
 	if ( !m_pD3D9Device )
 		return false;
@@ -1389,7 +1454,7 @@ bool CGameEngine::BRenderPrimitive( D3DPRIMITIVETYPE primType, uint32 uStartVert
 //-----------------------------------------------------------------------------
 // Purpose: Creates a new texture 
 //-----------------------------------------------------------------------------
-HGAMETEXTURE CGameEngine::HCreateTexture( byte *pRGBAData, uint32 uWidth, uint32 uHeight )
+HGAMETEXTURE CGameEngineWin32::HCreateTexture( byte *pRGBAData, uint32 uWidth, uint32 uHeight )
 {
 	if ( !m_pD3D9Device )
 		return 0;
@@ -1412,7 +1477,7 @@ HGAMETEXTURE CGameEngine::HCreateTexture( byte *pRGBAData, uint32 uWidth, uint32
 //-----------------------------------------------------------------------------
 // Purpose: Creates a new font
 //-----------------------------------------------------------------------------
-HGAMEFONT CGameEngine::HCreateFont( int nHeight, int nFontWeight, bool bItalic, char * pchFont )
+HGAMEFONT CGameEngineWin32::HCreateFont( int nHeight, int nFontWeight, bool bItalic, char * pchFont )
 {
 	if ( !m_pD3D9Device )
 		return 0;
@@ -1437,7 +1502,7 @@ HGAMEFONT CGameEngine::HCreateFont( int nHeight, int nFontWeight, bool bItalic, 
 //-----------------------------------------------------------------------------
 // Purpose: Draws text to the screen inside the given rectangular region, using the given font
 //-----------------------------------------------------------------------------
-bool CGameEngine::BDrawString( HGAMEFONT hFont, RECT rect, DWORD dwColor, DWORD dwFormat, const char *pchText )
+bool CGameEngineWin32::BDrawString( HGAMEFONT hFont, RECT rect, DWORD dwColor, DWORD dwFormat, const char *pchText )
 {
 	if ( !m_pD3D9Device )
 		return false;
@@ -1474,7 +1539,7 @@ bool CGameEngine::BDrawString( HGAMEFONT hFont, RECT rect, DWORD dwColor, DWORD 
 //-----------------------------------------------------------------------------
 // Purpose: Message pump for OS messages
 //-----------------------------------------------------------------------------
-void CGameEngine::MessagePump()
+void CGameEngineWin32::MessagePump()
 {
 	MSG msg;
 	BOOL bRet;
@@ -1493,7 +1558,7 @@ void CGameEngine::MessagePump()
 //-----------------------------------------------------------------------------
 // Purpose: Track keys which are down
 //-----------------------------------------------------------------------------
-void CGameEngine::RecordKeyDown( DWORD dwVK )
+void CGameEngineWin32::RecordKeyDown( DWORD dwVK )
 {
 	m_SetKeysDown.insert( dwVK );
 }
@@ -1502,7 +1567,7 @@ void CGameEngine::RecordKeyDown( DWORD dwVK )
 //-----------------------------------------------------------------------------
 // Purpose: Track keys which are up
 //-----------------------------------------------------------------------------
-void CGameEngine::RecordKeyUp( DWORD dwVK )
+void CGameEngineWin32::RecordKeyUp( DWORD dwVK )
 {
 	std::set<DWORD>::iterator iter;
 	iter = m_SetKeysDown.find( dwVK );
@@ -1514,7 +1579,7 @@ void CGameEngine::RecordKeyUp( DWORD dwVK )
 //-----------------------------------------------------------------------------
 // Purpose: Find out if a key is currently down
 //-----------------------------------------------------------------------------
-bool CGameEngine::BIsKeyDown( DWORD dwVK )
+bool CGameEngineWin32::BIsKeyDown( DWORD dwVK )
 {
 	std::set<DWORD>::iterator iter;
 	iter = m_SetKeysDown.find( dwVK );
@@ -1527,13 +1592,14 @@ bool CGameEngine::BIsKeyDown( DWORD dwVK )
 //-----------------------------------------------------------------------------
 // Purpose: Get a down key value
 //-----------------------------------------------------------------------------
-bool CGameEngine::BGetFirstKeyDown( DWORD *pdwVK )
+bool CGameEngineWin32::BGetFirstKeyDown( DWORD *pdwVK )
 {
 	std::set<DWORD>::iterator iter;
 	iter = m_SetKeysDown.begin();
 	if ( iter != m_SetKeysDown.end() )
 	{
 		*pdwVK = *iter;
+		m_SetKeysDown.erase( iter );
 		return true;
 	}
 	else
@@ -1546,9 +1612,9 @@ bool CGameEngine::BGetFirstKeyDown( DWORD *pdwVK )
 //-----------------------------------------------------------------------------
 // Purpose: Find the engine instance tied to a given hwnd
 //-----------------------------------------------------------------------------
-CGameEngine * CGameEngine::FindEngineInstanceForHWND( HWND hWnd )
+CGameEngineWin32 * CGameEngineWin32::FindEngineInstanceForHWND( HWND hWnd )
 {
-	std::map<HWND, CGameEngine *>::iterator iter;
+	std::map<HWND, CGameEngineWin32 *>::iterator iter;
 	iter = m_MapEngineInstances.find( hWnd );
 	if ( iter == m_MapEngineInstances.end() )
 		return NULL;
@@ -1560,7 +1626,7 @@ CGameEngine * CGameEngine::FindEngineInstanceForHWND( HWND hWnd )
 //-----------------------------------------------------------------------------
 // Purpose: Add the engine instance tied to a given hwnd to our static map
 //-----------------------------------------------------------------------------
-void CGameEngine::AddInstanceToHWNDMap( CGameEngine* pInstance, HWND hWnd )
+void CGameEngineWin32::AddInstanceToHWNDMap( CGameEngineWin32* pInstance, HWND hWnd )
 {
 	m_MapEngineInstances[hWnd] = pInstance;
 }
@@ -1569,13 +1635,11 @@ void CGameEngine::AddInstanceToHWNDMap( CGameEngine* pInstance, HWND hWnd )
 //-----------------------------------------------------------------------------
 // Purpose: Removes the instance associated with a given HWND from the map
 //-----------------------------------------------------------------------------
-void CGameEngine::RemoveInstanceFromHWNDMap( HWND hWnd )
+void CGameEngineWin32::RemoveInstanceFromHWNDMap( HWND hWnd )
 {
-	std::map<HWND, CGameEngine *>::iterator iter;
+	std::map<HWND, CGameEngineWin32 *>::iterator iter;
 	iter = m_MapEngineInstances.find( hWnd );
 	if ( iter != m_MapEngineInstances.end() )
 		m_MapEngineInstances.erase( iter );
 }
-
-
 
