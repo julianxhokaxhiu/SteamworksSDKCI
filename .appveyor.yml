@@ -1,7 +1,7 @@
 # .appveyor.yml
 
 # Build version
-version: '1.11.{build}'
+version: '1.12.{build}'
 
 # Use the latest available toolchain
 image: Visual Studio 2019
@@ -59,6 +59,9 @@ for:
             mv steamworks_sdk/redistributable_bin/*.dll .dist/bin/steam/
             mv steamworks_sdk/redistributable_bin/linux32/*.so .dist/lib/steam/
             mv steamworks_sdk/redistributable_bin/osx32/*.dylib .dist/lib/steam/
+            mv steamworks_sdk/public/steam/lib/win32/*.lib .dist/lib/steam/
+            mv steamworks_sdk/public/steam/lib/win32/*.dll .dist/bin/steam/
+            mv steamworks_sdk/public/steam/lib/linux32/*.so .dist/lib/steam/
   -
     matrix:
       only:
@@ -67,6 +70,8 @@ for:
         - cmd: |
             mv steamworks_sdk/redistributable_bin/win64/*.lib .dist/lib/steam/
             mv steamworks_sdk/redistributable_bin/win64/*.dll .dist/bin/steam/
+            mv steamworks_sdk/public/steam/lib/win64/*.lib .dist/lib/steam/
+            mv steamworks_sdk/public/steam/lib/win64/*.dll .dist/bin/steam/
 
 # Do not run unit tests
 test: off
