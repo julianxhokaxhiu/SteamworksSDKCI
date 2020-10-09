@@ -10,9 +10,19 @@ website at: http://partner.steamgames.com
 
 
 ----------------------------------------------------------------
+v1.50 29th August 2020
+----------------------------------------------------------------
+* Added ISteamUtils::InitFilterText() and ISteamUtils::FilterText() which allow a game to filter content and user-generated text to comply with China legal requirements, and reduce profanity and slurs based on user settings.
+* Added ISteamNetworkingMessages, a new non-connection-oriented API, similar to UDP.  This interface is intended to make it easy to port existing UDP code while taking advantage of the features provided by ISteamNetworkingSockets, especially Steam Datagram Relay (SDR).
+* Added poll groups to ISteamNetworkingSockets.  Poll groups are a way to receive messages from many different connections at a time.
+* ISteamNetworkingSockets::ReceiveMessagesOnListenSocket has been removed.  (Use poll groups instead.)
+* Added symmetric connect mode to ISteamNetworkingSockets.  This can be used to solve the coordination problem of establishing a single connection between two peers, when both peers may initiating the connection at the same time and neither peer is the “server” or “client”.
+* ISteamNetworking is deprecated and may be removed in a future version of the SDK.  Please use ISteamNetworkingSockets or ISteamNetworkingMessages instead.
+
+
+----------------------------------------------------------------
 v1.49 12th June 2020
 ----------------------------------------------------------------
-
 * Added ISteamApps::BIsTimedTrial() which allows a game to check if user only has limited playtime
 * Added ISteamFriends::RegisterProtocolInOverlayBrowser() which will enable dispatching callbacks when the overlay web browser navigates to a registered custom protocol, such as “mygame://<callback data>”
 * Added ISteamuserStats::GetAchievementProgressLimits() which lets the game query at run-time the progress-based achievement’s bounds as set by the developers in the Steamworks application settings
