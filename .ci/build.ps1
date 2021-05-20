@@ -31,7 +31,7 @@ Move-Item steamworks_sdk\public\steam\lib\linux32\*.so .dist\x86\lib\steam\
 mkdir .dist\x64\bin\steam | Out-Null
 mkdir .dist\x64\lib\steam | Out-Null
 mkdir .dist\x64\include\steam | Out-Null
-Copy-Item .dist\x86\include\steam .dist\x64\include\steam
+Copy-Item .dist\x86\include\steam\*.h .dist\x64\include\steam
 Move-Item steamworks_sdk\redistributable_bin\win64\*.lib .dist\x64\lib\steam\
 Move-Item steamworks_sdk\redistributable_bin\win64\*.dll .dist\x64\bin\steam\
 Move-Item steamworks_sdk\redistributable_bin\linux64\*.so .dist\x64\bin\steam\
