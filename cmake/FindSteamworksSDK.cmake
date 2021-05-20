@@ -7,6 +7,7 @@ if (NOT STEAMWORKSSDK_FOUND)
 		steam_api64
 		PATH_SUFFIXES
 		lib/steam
+		vendor/lib/steam
 	)
 
 	find_path(
@@ -14,6 +15,7 @@ if (NOT STEAMWORKSSDK_FOUND)
 		steam
 		PATH_SUFFIXES
 		include
+		vendor/include
 	)
 
 	add_library(STEAMWORKSSDK::STEAMWORKSSDK STATIC IMPORTED)
@@ -35,6 +37,7 @@ if (NOT STEAMWORKSSDK_FOUND)
 		sdkencryptedappticket64
 		PATH_SUFFIXES
 		lib/steam
+		vendor/lib/steam
 	)
 
 	add_library(STEAMWORKSSDK::APPTICKET STATIC IMPORTED)
