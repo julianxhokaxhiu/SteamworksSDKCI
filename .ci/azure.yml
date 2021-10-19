@@ -1,6 +1,6 @@
 # Azure Pipeline YAML file
 
-name: 1.51$(Rev:.r)
+name: 1.52$(Rev:.r)
 
 trigger:
   branches:
