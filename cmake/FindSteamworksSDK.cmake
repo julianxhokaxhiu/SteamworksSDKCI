@@ -1,8 +1,8 @@
 include(FindPackageHandleStandardArgs)
 
-if (NOT STEAMWORKSSDK_FOUND)
+if (NOT SteamworksSDK_FOUND)
 	find_library(
-		STEAMWORKSSDK_LIBRARY
+		SteamworksSDK_LIBRARY
 		steam_api
 		steam_api64
 		PATH_SUFFIXES
@@ -11,28 +11,28 @@ if (NOT STEAMWORKSSDK_FOUND)
 	)
 
 	find_path(
-		STEAMWORKSSDK_INCLUDE_DIR
+		SteamworksSDK_INCLUDE_DIR
 		steam
 		PATH_SUFFIXES
 		include
 		vendor/include
 	)
 
-	add_library(STEAMWORKSSDK::STEAMWORKSSDK STATIC IMPORTED)
+	add_library(SteamworksSDK::SteamworksSDK STATIC IMPORTED)
 
 	set_target_properties(
-		STEAMWORKSSDK::STEAMWORKSSDK
+		SteamworksSDK::SteamworksSDK
 		PROPERTIES
 		IMPORTED_LOCATION
-		"${STEAMWORKSSDK_LIBRARY}"
+		"${SteamworksSDK_LIBRARY}"
 		INTERFACE_INCLUDE_DIRECTORIES
-		"${STEAMWORKSSDK_INCLUDE_DIR}"
+		"${SteamworksSDK_INCLUDE_DIR}"
 	)
 
 	#-----------------------------------------
 
   find_library(
-		STEAMWORKSSDK_APPTICKET_LIBRARY
+		SteamworksSDK_AppTicket_LIBRARY
 		sdkencryptedappticket
 		sdkencryptedappticket64
 		PATH_SUFFIXES
@@ -40,16 +40,16 @@ if (NOT STEAMWORKSSDK_FOUND)
 		vendor/lib/steam
 	)
 
-	add_library(STEAMWORKSSDK::APPTICKET STATIC IMPORTED)
+	add_library(SteamworksSDK::AppTicket STATIC IMPORTED)
 
 	set_target_properties(
-		STEAMWORKSSDK::APPTICKET
+		SteamworksSDK::AppTicket
 		PROPERTIES
 		IMPORTED_LOCATION
-		"${STEAMWORKSSDK_APPTICKET_LIBRARY}"
+		"${SteamworksSDK_AppTicket_LIBRARY}"
 	)
 
 	#-----------------------------------------
 
-	find_package_handle_standard_args(STEAMWORKSSDK DEFAULT_MSG STEAMWORKSSDK_LIBRARY STEAMWORKSSDK_APPTICKET_LIBRARY STEAMWORKSSDK_INCLUDE_DIR)
+	find_package_handle_standard_args(SteamworksSDK DEFAULT_MSG SteamworksSDK_LIBRARY SteamworksSDK_AppTicket_LIBRARY SteamworksSDK_INCLUDE_DIR)
 endif()

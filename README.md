@@ -8,13 +8,16 @@ CI builds of Steamworks SDK for CMake build systems
 See [cmake](cmake) folder for include files. Then in your own library `CMakeLists.txt` do:
 
 ```cmake
-find_package(STEAMWORKSSDK REQUIRED)
+find_package(SteamworksSDK REQUIRED)
 
 ...
 
 target_link_libraries(<libname>
   ...
-  STEAMWORKSSDK::STEAMWORKSSDK
+  # Link the SDK
+  SteamworksSDK::SteamworksSDK
+  # Link the AppTicket
+  SteamworksSDK::AppTicket
   ...
 )
 ```
