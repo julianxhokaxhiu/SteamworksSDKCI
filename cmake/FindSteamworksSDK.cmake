@@ -31,7 +31,7 @@ if (NOT SteamworksSDK_FOUND)
 
 	#-----------------------------------------
 
-  find_library(
+	find_library(
 		SteamworksSDK_AppTicket_LIBRARY
 		sdkencryptedappticket
 		sdkencryptedappticket64
