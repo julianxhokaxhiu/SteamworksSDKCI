@@ -1,3 +1,5 @@
+![Overall Downloads](https://img.shields.io/github/downloads/julianxhokaxhiu/SteamworksSDKCI/total?label=Overall%20Downloads) [![Build Status](https://dev.azure.com/julianxhokaxhiu/Github/_apis/build/status/julianxhokaxhiu.SteamworksSDKCI?branchName=master)](https://dev.azure.com/julianxhokaxhiu/Github/_build/latest?definitionId=1&branchName=master)
+
 # SteamworksSDKCI
 CI builds of Steamworks SDK for CMake build systems
 
