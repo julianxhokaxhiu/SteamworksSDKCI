@@ -1,0 +1,65 @@
+name: SteamworksSDK
+
+run-name: 1.58.${{ github.run_number }}
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - master
+    tags:
+    - "*"
+  pull_request:
+    branches:
+    - master
+
+env:
+  _IS_BUILD_CANARY: false
+  _IS_GITHUB_RELEASE: false
+  _RELEASE_NAME: SteamworksSDK
+  _RELEASE_VERSION: v0
+  _BUILD_BRANCH: "${{ github.ref }}"
+  _BUILD_VERSION: "1.58.${{ github.run_number }}"
+  # GIT: Fix reporting from stderr to stdout
+  GIT_REDIRECT_STDERR: 2>&1
+
+jobs:
+  SteamworksSDK:
+    runs-on: windows-latest
+    timeout-minutes: 1440
+    strategy:
+      max-parallel: 1
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4.1.0
+    - name: Build and Package
+      run: ".github/workflows/build.ps1"
+      shell: powershell
+    - name: Publish PR artifacts
+      if: env._IS_GITHUB_RELEASE == 'false' && success()
+      uses: actions/upload-artifact@v4.0.0
+      with:
+        name: "${{ env._RELEASE_NAME }}-${{ env._RELEASE_VERSION }}"
+        path: ".dist/*.zip"
+    - name: Publish Canary release
+      uses: ncipollo/release-action@v1
+      if: env._IS_GITHUB_RELEASE == 'true' && env._IS_BUILD_CANARY == 'true' && success()
+      with:
+        artifacts: ".dist/*.zip"
+        allowUpdates: true
+        generateReleaseNotes: true
+        prerelease: true
+        removeArtifacts: true
+        tag: canary
+        name: "${{ env._RELEASE_NAME }}-${{ env._RELEASE_VERSION }}"
+        body: |
+          This is a canary build. Please be aware it may be prone to crashing and is NOT tested by anyone. Use this build AT YOUR OWN RISK!
+    - name: Publish Stable release
+      uses: ncipollo/release-action@v1
+      if: env._IS_GITHUB_RELEASE == 'true' && env._IS_BUILD_CANARY == 'false' && success()
+      with:
+        artifacts: ".dist/*.zip"
+        generateReleaseNotes: true
+        makeLatest: true
+        removeArtifacts: true
+        name: "${{ env._RELEASE_NAME }}-${{ env._RELEASE_VERSION }}"
