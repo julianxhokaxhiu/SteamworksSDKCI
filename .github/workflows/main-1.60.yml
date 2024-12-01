@@ -1,6 +1,6 @@
 name: SteamworksSDK
 
-run-name: 1.59.${{ github.run_number }}
+run-name: 1.60.${{ github.run_number }}
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ env:
   _RELEASE_NAME: SteamworksSDK
   _RELEASE_VERSION: v0
   _BUILD_BRANCH: "${{ github.ref }}"
-  _BUILD_VERSION: "1.59.${{ github.run_number }}"
+  _BUILD_VERSION: "1.60.${{ github.run_number }}"
   # GIT: Fix reporting from stderr to stdout
   GIT_REDIRECT_STDERR: 2>&1
 

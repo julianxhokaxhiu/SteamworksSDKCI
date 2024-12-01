@@ -1,4 +1,4 @@
-![Overall Downloads](https://img.shields.io/github/downloads/julianxhokaxhiu/SteamworksSDKCI/total?label=Overall%20Downloads) ![GitHub Actions Workflow Status](https://github.com/julianxhokaxhiu/SteamworksSDKCI/actions/workflows/main-1.59.yml/badge.svg?branch=master)
+![Overall Downloads](https://img.shields.io/github/downloads/julianxhokaxhiu/SteamworksSDKCI/total?label=Overall%20Downloads) ![GitHub Actions Workflow Status](https://github.com/julianxhokaxhiu/SteamworksSDKCI/actions/workflows/main-1.60.yml/badge.svg?branch=master)
 
 # SteamworksSDKCI
 CI builds of Steamworks SDK for CMake build systems
