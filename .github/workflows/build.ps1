@@ -37,12 +37,28 @@ mkdir .dist\x64\include\steam | Out-Null
 Copy-Item .dist\x86\include\steam\*.h .dist\x64\include\steam
 Move-Item steamworks_sdk\redistributable_bin\win64\*.lib .dist\x64\lib\steam\
 Move-Item steamworks_sdk\redistributable_bin\win64\*.dll .dist\x64\bin\steam\
-Move-Item steamworks_sdk\redistributable_bin\linux64\*.so .dist\x64\bin\steam\
+Move-Item steamworks_sdk\redistributable_bin\linux64\*.so .dist\x64\lib\steam\
 Move-Item steamworks_sdk\redistributable_bin\osx\*.dylib .dist\x64\lib\steam\
 Move-Item steamworks_sdk\public\steam\lib\win64\*.lib .dist\x64\lib\steam\
 Move-Item steamworks_sdk\public\steam\lib\win64\*.dll .dist\x64\bin\steam\
 Move-Item steamworks_sdk\public\steam\lib\linux64\*.so .dist\x64\lib\steam\
 Move-Item steamworks_sdk\public\steam\lib\osx\*.dylib .dist\x64\lib\steam\
 
+# arm64
+mkdir .dist\arm64\lib\steam | Out-Null
+mkdir .dist\arm64\include\steam | Out-Null
+Copy-Item .dist\x86\include\steam\*.h .dist\arm64\include\steam
+Move-Item steamworks_sdk\redistributable_bin\linuxarm64\*.so .dist\arm64\lib\steam\
+Move-Item steamworks_sdk\public\steam\lib\linuxarm64\*.so .dist\arm64\lib\steam
+
+# android
+mkdir .dist\android\bin\steam | Out-Null
+mkdir .dist\android\lib\steam | Out-Null
+mkdir .dist\android\include\steam | Out-Null
+Copy-Item .dist\x86\include\steam\*.h .dist\android\include\steam
+Move-Item steamworks_sdk\redistributable_bin\androidarm64\*.so .dist\android\lib\steam\
+
 Compress-Archive -Path .dist\x86\* -DestinationPath ".dist\${env:_RELEASE_NAME}-${env:_RELEASE_VERSION}_x86.zip"
 Compress-Archive -Path .dist\x64\* -DestinationPath ".dist\${env:_RELEASE_NAME}-${env:_RELEASE_VERSION}_x64.zip"
+Compress-Archive -Path .dist\arm64\* -DestinationPath ".dist\${env:_RELEASE_NAME}-${env:_RELEASE_VERSION}_arm64.zip"
+Compress-Archive -Path .dist\android\* -DestinationPath ".dist\${env:_RELEASE_NAME}-${env:_RELEASE_VERSION}_android.zip"
